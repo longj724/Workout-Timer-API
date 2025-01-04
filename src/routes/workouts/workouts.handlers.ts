@@ -1,10 +1,12 @@
+// External Dependencies
 import db from '@/db';
 import { intervals, timers, workouts } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
-
 import * as HttpStatusCodes from 'stoker/http-status-codes';
+import { getAuth } from '@hono/clerk-auth';
 
+// Internal Dependencies
 import type { AppRouteHandler } from '@/lib/types';
 import type {
   ListRoute,
@@ -15,7 +17,16 @@ import type {
 } from './workouts.routes';
 
 export const listHandler: AppRouteHandler<ListRoute> = async (c) => {
+  const auth = getAuth(c);
+
+  if (!auth?.userId) {
+    throw new HTTPException(HttpStatusCodes.UNAUTHORIZED, {
+      message: 'Unauthorized',
+    });
+  }
+
   const workoutsList = await db.query.workouts.findMany({
+    where: eq(workouts.userId, auth.userId),
     with: {
       intervals: {
         with: {
@@ -34,6 +45,14 @@ export const listHandler: AppRouteHandler<ListRoute> = async (c) => {
 };
 
 export const createHandler: AppRouteHandler<CreateRoute> = async (c) => {
+  const auth = getAuth(c);
+
+  if (!auth?.userId) {
+    throw new HTTPException(HttpStatusCodes.UNAUTHORIZED, {
+      message: 'Unauthorized',
+    });
+  }
+
   const { intervals: intervalsData, ...workoutData } = await c.req.json();
 
   // Start a transaction since we're inserting multiple related records
@@ -85,6 +104,14 @@ export const createHandler: AppRouteHandler<CreateRoute> = async (c) => {
 };
 
 export const getOneHandler: AppRouteHandler<GetOneRoute> = async (c) => {
+  const auth = getAuth(c);
+
+  if (!auth?.userId) {
+    throw new HTTPException(HttpStatusCodes.UNAUTHORIZED, {
+      message: 'Unauthorized',
+    });
+  }
+
   const id = c.req.param('id');
 
   const workout = await db.query.workouts.findFirst({
@@ -111,10 +138,17 @@ export const getOneHandler: AppRouteHandler<GetOneRoute> = async (c) => {
 };
 
 export const patchHandler: AppRouteHandler<PatchRoute> = async (c) => {
+  const auth = getAuth(c);
+
+  if (!auth?.userId) {
+    throw new HTTPException(HttpStatusCodes.UNAUTHORIZED, {
+      message: 'Unauthorized',
+    });
+  }
+
   const id = c.req.param('id');
   const updates = await c.req.json();
 
-  // Check if workout exists
   const existingWorkout = await db.query.workouts.findFirst({
     where: eq(workouts.id, id),
   });
@@ -151,9 +185,15 @@ export const patchHandler: AppRouteHandler<PatchRoute> = async (c) => {
 };
 
 export const removeHandler: AppRouteHandler<RemoveRoute> = async (c) => {
+  const auth = getAuth(c);
+
+  if (!auth?.userId) {
+    throw new HTTPException(HttpStatusCodes.UNAUTHORIZED, {
+      message: 'Unauthorized',
+    });
+  }
   const id = c.req.param('id');
 
-  // Check if workout exists
   const workout = await db.query.workouts.findFirst({
     where: eq(workouts.id, id),
     with: {
@@ -183,7 +223,6 @@ export const removeHandler: AppRouteHandler<RemoveRoute> = async (c) => {
       await tx.delete(intervals).where(eq(intervals.id, interval.id));
     }
 
-    // Delete the workout
     await tx.delete(workouts).where(eq(workouts.id, id));
   });
 

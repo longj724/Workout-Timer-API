@@ -1,7 +1,24 @@
+// External Dependencies
 import { integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { relations } from 'drizzle-orm';
 import { z } from 'zod';
+
+export const users = pgTable('users', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  createdAt: timestamp('created_at')
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
+});
+
+export const createUserSchema = createInsertSchema(users);
+export const createSelectUserSchema = createSelectSchema(users);
 
 export const timers = pgTable('timers', {
   id: text('id')
@@ -24,7 +41,7 @@ export const intervals = pgTable('intervals', {
     .$defaultFn(() => crypto.randomUUID()),
   name: text('name'),
   repetitions: integer('repetitions').notNull().default(1),
-  workoutId: integer('workout_id')
+  workoutId: text('workout_id')
     .notNull()
     .references(() => workouts.id),
   order: integer('order').notNull(),
@@ -41,7 +58,7 @@ export const intervalTimers = pgTable('interval_timers', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  intervalId: integer('interval_id')
+  intervalId: text('interval_id')
     .notNull()
     .references(() => intervals.id),
   timerId: text('timer_id')

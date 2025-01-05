@@ -30,16 +30,14 @@ export const listHandler: AppRouteHandler<ListRoute> = async (c) => {
     with: {
       intervals: {
         with: {
-          intervalTimers: {
-            with: {
-              timer: true,
-            },
-          },
+          timers: true,
         },
         orderBy: (intervals, { asc }) => [asc(intervals.order)],
       },
     },
   });
+
+  console.log('workoutsList', workoutsList);
 
   return c.json(workoutsList, HttpStatusCodes.OK);
 };
@@ -55,25 +53,29 @@ export const createHandler: AppRouteHandler<CreateRoute> = async (c) => {
 
   const { intervals: intervalsData, ...workoutData } = await c.req.json();
 
-  // Start a transaction since we're inserting multiple related records
-  return await db.transaction(async (tx) => {
-    // Create the workout first
-    const [workout] = await tx.insert(workouts).values(workoutData).returning();
+  return db.transaction(async (tx) => {
+    const [workout] = await tx
+      .insert(workouts)
+      .values({ ...workoutData, userId: auth.userId })
+      .returning();
 
-    // Create timers and intervals
-    for (const [index, interval] of intervalsData.entries()) {
-      const { timer: timerData, ...intervalData } = interval;
+    for (const [_, interval] of intervalsData.entries()) {
+      const { timers: timersData, ...intervalData } = interval;
 
-      // Create timer
-      const [timer] = await tx.insert(timers).values(timerData).returning();
+      const [createdInterval] = await tx
+        .insert(intervals)
+        .values({
+          ...intervalData,
+          workoutId: workout.id,
+        })
+        .returning();
 
-      // Create interval with the timer ID and workout ID
-      await tx.insert(intervals).values({
-        ...intervalData,
-        timerId: timer.id,
-        workoutId: workout.id,
-        order: index,
-      });
+      for (const timerData of timersData) {
+        const [createdTimer] = await tx
+          .insert(timers)
+          .values({ ...timerData, intervalId: createdInterval.id })
+          .returning();
+      }
     }
 
     // Fetch the complete workout with its relations
@@ -82,11 +84,7 @@ export const createHandler: AppRouteHandler<CreateRoute> = async (c) => {
       with: {
         intervals: {
           with: {
-            intervalTimers: {
-              with: {
-                timer: true,
-              },
-            },
+            timers: true,
           },
           orderBy: (intervals, { asc }) => [asc(intervals.order)],
         },
@@ -119,11 +117,7 @@ export const getOneHandler: AppRouteHandler<GetOneRoute> = async (c) => {
     with: {
       intervals: {
         with: {
-          intervalTimers: {
-            with: {
-              timer: true,
-            },
-          },
+          timers: true,
         },
         orderBy: (intervals, { asc }) => [asc(intervals.order)],
       },
@@ -164,17 +158,12 @@ export const patchHandler: AppRouteHandler<PatchRoute> = async (c) => {
     .where(eq(workouts.id, id))
     .returning();
 
-  // Fetch the complete updated workout with its relations
   const completeWorkout = await db.query.workouts.findFirst({
     where: eq(workouts.id, updatedWorkout.id),
     with: {
       intervals: {
         with: {
-          intervalTimers: {
-            with: {
-              timer: true,
-            },
-          },
+          timers: true,
         },
         orderBy: (intervals, { asc }) => [asc(intervals.order)],
       },
@@ -199,11 +188,7 @@ export const removeHandler: AppRouteHandler<RemoveRoute> = async (c) => {
     with: {
       intervals: {
         with: {
-          intervalTimers: {
-            with: {
-              timer: true,
-            },
-          },
+          timers: true,
         },
       },
     },
@@ -213,13 +198,9 @@ export const removeHandler: AppRouteHandler<RemoveRoute> = async (c) => {
     throw new HTTPException(404, { message: 'Workout not found' });
   }
 
-  // Start a transaction to delete related records
   await db.transaction(async (tx) => {
-    // Delete intervals and their associated timers
     for (const interval of workout.intervals) {
-      await tx
-        .delete(timers)
-        .where(eq(timers.id, interval.intervalTimers[0].timerId));
+      await tx.delete(timers).where(eq(timers.intervalId, interval.id));
       await tx.delete(intervals).where(eq(intervals.id, interval.id));
     }
 

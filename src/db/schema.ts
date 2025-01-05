@@ -24,6 +24,9 @@ export const timers = pgTable('timers', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
+  intervalId: text('interval_id')
+    .notNull()
+    .references(() => intervals.id),
   minutes: integer('minutes').notNull().default(0),
   seconds: integer('seconds').notNull().default(0),
   createdAt: timestamp('created_at')
@@ -44,26 +47,6 @@ export const intervals = pgTable('intervals', {
   workoutId: text('workout_id')
     .notNull()
     .references(() => workouts.id),
-  order: integer('order').notNull(),
-  createdAt: timestamp('created_at')
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: timestamp('updated_at')
-    .notNull()
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date()),
-});
-
-export const intervalTimers = pgTable('interval_timers', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  intervalId: text('interval_id')
-    .notNull()
-    .references(() => intervals.id),
-  timerId: text('timer_id')
-    .notNull()
-    .references(() => timers.id),
   order: integer('order').notNull(),
   createdAt: timestamp('created_at')
     .notNull()
@@ -99,21 +82,13 @@ export const intervalsRelations = relations(intervals, ({ one, many }) => ({
     fields: [intervals.workoutId],
     references: [workouts.id],
   }),
-  intervalTimers: many(intervalTimers),
+  timers: many(timers),
 }));
 
-export const timersRelations = relations(timers, ({ many }) => ({
-  intervalTimers: many(intervalTimers),
-}));
-
-export const intervalTimersRelations = relations(intervalTimers, ({ one }) => ({
+export const timersRelations = relations(timers, ({ one }) => ({
   interval: one(intervals, {
-    fields: [intervalTimers.intervalId],
+    fields: [timers.intervalId],
     references: [intervals.id],
-  }),
-  timer: one(timers, {
-    fields: [intervalTimers.timerId],
-    references: [timers.id],
   }),
 }));
 
@@ -151,23 +126,18 @@ export const patchTimersSchema = insertTimersSchema.partial();
 export const patchIntervalsSchema = insertIntervalsSchema.partial();
 export const patchWorkoutsSchema = insertWorkoutsSchema.partial();
 
-export const selectIntervalTimersSchema = createSelectSchema(intervalTimers);
-export const insertIntervalTimersSchema = createInsertSchema(intervalTimers, {
-  order: z.number().min(0),
-}).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export const createWorkoutSchema = insertWorkoutsSchema.extend({
   intervals: z.array(
     insertIntervalsSchema
       .extend({
         timers: z.array(
-          insertTimersSchema.extend({
-            order: z.number().min(0),
-          })
+          insertTimersSchema
+            .extend({
+              order: z.number().min(0),
+            })
+            .omit({
+              intervalId: true,
+            })
         ),
       })
       .omit({

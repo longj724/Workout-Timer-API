@@ -37,8 +37,6 @@ export const listHandler: AppRouteHandler<ListRoute> = async (c) => {
     },
   });
 
-  console.log('workoutsList', workoutsList);
-
   return c.json(workoutsList, HttpStatusCodes.OK);
 };
 
@@ -181,6 +179,7 @@ export const removeHandler: AppRouteHandler<RemoveRoute> = async (c) => {
       message: 'Unauthorized',
     });
   }
+
   const id = c.req.param('id');
 
   const workout = await db.query.workouts.findFirst({

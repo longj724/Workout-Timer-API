@@ -1,7 +1,8 @@
+// External Dependencies
 import { createRoute, z } from '@hono/zod-openapi';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import { jsonContent, jsonContentRequired } from 'stoker/openapi/helpers';
-import { createErrorSchema, IdParamsSchema } from 'stoker/openapi/schemas';
+import { createErrorSchema } from 'stoker/openapi/schemas';
 
 import {
   selectWorkoutsSchema,
@@ -50,7 +51,9 @@ export const getOne = createRoute({
   path: '/workouts/{id}',
   method: 'get',
   request: {
-    params: IdParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   tags,
   responses: {
@@ -63,7 +66,11 @@ export const getOne = createRoute({
       'Workout not found'
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(
+        z.object({
+          id: z.string(),
+        })
+      ),
       'Invalid id error'
     ),
   },
@@ -73,7 +80,9 @@ export const patch = createRoute({
   path: '/workouts/{id}',
   method: 'patch',
   request: {
-    params: IdParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
     body: jsonContentRequired(patchWorkoutsSchema, 'The workout updates'),
   },
   tags,
@@ -88,7 +97,11 @@ export const patch = createRoute({
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(patchWorkoutsSchema).or(
-        createErrorSchema(IdParamsSchema)
+        createErrorSchema(
+          z.object({
+            id: z.string(),
+          })
+        )
       ),
       'The validation error(s)'
     ),
@@ -99,7 +112,9 @@ export const remove = createRoute({
   path: '/workouts/{id}',
   method: 'delete',
   request: {
-    params: IdParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   tags,
   responses: {
@@ -111,7 +126,11 @@ export const remove = createRoute({
       'Workout not found'
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(
+        z.object({
+          id: z.string(),
+        })
+      ),
       'Invalid id error'
     ),
   },

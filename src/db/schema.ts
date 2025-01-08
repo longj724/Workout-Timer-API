@@ -80,7 +80,9 @@ export const completedWorkouts = pgTable('completed_workouts', {
   workoutId: text('workout_id').references(() => workouts.id),
   userId: text('user_id').notNull(),
   dateCompleted: timestamp('date_completed').notNull(),
-  duration: integer('duration').notNull().default(0),
+  duration_hours: integer('duration_hours').notNull().default(0),
+  duration_minutes: integer('duration_minutes').notNull().default(0),
+  duration_seconds: integer('duration_seconds').notNull().default(0),
 });
 
 // Define relationships

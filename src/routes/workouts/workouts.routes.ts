@@ -150,7 +150,9 @@ export const complete = createRoute({
         workoutId: z.string().optional(),
         userId: z.string(),
         dateCompleted: z.string(),
-        duration: z.number(),
+        duration_hours: z.number(),
+        duration_minutes: z.number(),
+        duration_seconds: z.number(),
       }),
       'The completed workout'
     ),
@@ -167,7 +169,9 @@ export const complete = createRoute({
           workoutId: z.string().optional(),
           userId: z.string(),
           dateCompleted: z.string(),
-          duration: z.number(),
+          duration_hours: z.number(),
+          duration_minutes: z.number(),
+          duration_seconds: z.number(),
         })
       ),
       'The validation error(s)'

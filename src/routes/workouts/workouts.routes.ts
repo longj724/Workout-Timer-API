@@ -4,10 +4,12 @@ import * as HttpStatusCodes from 'stoker/http-status-codes';
 import { jsonContent, jsonContentRequired } from 'stoker/openapi/helpers';
 import { createErrorSchema } from 'stoker/openapi/schemas';
 
+// Internal Dependencies
 import {
-  selectWorkoutsSchema,
   createWorkoutSchema,
-  patchWorkoutsSchema,
+  getCompletedWorkoutsSchema,
+  patchWorkoutWithRelationsSchema,
+  selectWorkoutsSchema,
 } from '@/db/schema';
 import { notFoundSchema } from '@/lib/constants';
 
@@ -47,34 +49,34 @@ export const create = createRoute({
   },
 });
 
-export const getOne = createRoute({
-  path: '/workouts/{id}',
-  method: 'get',
-  request: {
-    params: z.object({
-      id: z.string(),
-    }),
-  },
-  tags,
-  responses: {
-    [HttpStatusCodes.OK]: jsonContent(
-      selectWorkoutsSchema,
-      'The requested workout'
-    ),
-    [HttpStatusCodes.NOT_FOUND]: jsonContent(
-      notFoundSchema,
-      'Workout not found'
-    ),
-    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(
-        z.object({
-          id: z.string(),
-        })
-      ),
-      'Invalid id error'
-    ),
-  },
-});
+// export const getOne = createRoute({
+//   path: '/workouts/{id}',
+//   method: 'get',
+//   request: {
+//     params: z.object({
+//       id: z.string(),
+//     }),
+//   },
+//   tags,
+//   responses: {
+//     [HttpStatusCodes.OK]: jsonContent(
+//       selectWorkoutsSchema,
+//       'The requested workout'
+//     ),
+//     [HttpStatusCodes.NOT_FOUND]: jsonContent(
+//       notFoundSchema,
+//       'Workout not found'
+//     ),
+//     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+//       createErrorSchema(
+//         z.object({
+//           id: z.string(),
+//         })
+//       ),
+//       'Invalid id error'
+//     ),
+//   },
+// });
 
 export const patch = createRoute({
   path: '/workouts/{id}',
@@ -83,7 +85,10 @@ export const patch = createRoute({
     params: z.object({
       id: z.string(),
     }),
-    body: jsonContentRequired(patchWorkoutsSchema, 'The workout updates'),
+    body: jsonContentRequired(
+      patchWorkoutWithRelationsSchema,
+      'The workout updates with optional intervals and timers'
+    ),
   },
   tags,
   responses: {
@@ -96,7 +101,7 @@ export const patch = createRoute({
       'Workout not found'
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(patchWorkoutsSchema).or(
+      createErrorSchema(patchWorkoutWithRelationsSchema).or(
         createErrorSchema(
           z.object({
             id: z.string(),
@@ -136,8 +141,78 @@ export const remove = createRoute({
   },
 });
 
+export const complete = createRoute({
+  path: '/workouts/complete',
+  method: 'post',
+  request: {
+    body: jsonContentRequired(
+      z.object({
+        workoutId: z.string().optional(),
+        userId: z.string(),
+        dateCompleted: z.string(),
+        duration: z.number(),
+      }),
+      'The completed workout'
+    ),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      getCompletedWorkoutsSchema,
+      'The completed workout'
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(
+        z.object({
+          workoutId: z.string().optional(),
+          userId: z.string(),
+          dateCompleted: z.string(),
+          duration: z.number(),
+        })
+      ),
+      'The validation error(s)'
+    ),
+  },
+});
+
+export const listCompleted = createRoute({
+  path: '/workouts/completed',
+  method: 'get',
+  request: {
+    query: z.object({
+      startDate: z.string().refine(
+        (value) => {
+          const date = new Date(value);
+          return date.toLocaleDateString() === value;
+        },
+        {
+          message: 'Invalid date format, expected locale date string',
+        }
+      ),
+      endDate: z.string().refine(
+        (value) => {
+          const date = new Date(value);
+          return date.toLocaleDateString() === value;
+        },
+        {
+          message: 'Invalid date format, expected locale date string',
+        }
+      ),
+    }),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      z.array(getCompletedWorkoutsSchema),
+      'List of completed workouts within the date range'
+    ),
+  },
+});
+
 export type ListRoute = typeof list;
 export type CreateRoute = typeof create;
-export type GetOneRoute = typeof getOne;
+// export type GetOneRoute = typeof getOne;
 export type PatchRoute = typeof patch;
 export type RemoveRoute = typeof remove;
+export type ListCompletedRoute = typeof listCompleted;
+export type CompleteRoute = typeof complete;

@@ -26,7 +26,8 @@ export const timers = pgTable('timers', {
     .$defaultFn(() => crypto.randomUUID()),
   intervalId: text('interval_id')
     .notNull()
-    .references(() => intervals.id),
+    .references(() => intervals.id, { onDelete: 'cascade' }),
+  order: integer('order').notNull(),
   minutes: integer('minutes').notNull().default(0),
   seconds: integer('seconds').notNull().default(0),
   createdAt: timestamp('created_at')
@@ -72,10 +73,31 @@ export const workouts = pgTable('workouts', {
     .$onUpdate(() => new Date()),
 });
 
+export const completedWorkouts = pgTable('completed_workouts', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  workoutId: text('workout_id').references(() => workouts.id),
+  userId: text('user_id').notNull(),
+  dateCompleted: timestamp('date_completed').notNull(),
+  duration: integer('duration').notNull().default(0),
+});
+
 // Define relationships
 export const workoutsRelations = relations(workouts, ({ many }) => ({
   intervals: many(intervals),
+  completedWorkouts: many(completedWorkouts),
 }));
+
+export const completedWorkoutsRelations = relations(
+  completedWorkouts,
+  ({ one }) => ({
+    workout: one(workouts, {
+      fields: [completedWorkouts.workoutId],
+      references: [workouts.id],
+    }),
+  })
+);
 
 export const intervalsRelations = relations(intervals, ({ one, many }) => ({
   workout: one(workouts, {
@@ -126,6 +148,27 @@ export const patchTimersSchema = insertTimersSchema.partial();
 export const patchIntervalsSchema = insertIntervalsSchema.partial();
 export const patchWorkoutsSchema = insertWorkoutsSchema.partial();
 
+export const patchWorkoutWithRelationsSchema = patchWorkoutsSchema.extend({
+  interval: insertIntervalsSchema
+    .extend({
+      id: z.string().optional(),
+      timers: z.array(
+        insertTimersSchema
+          .extend({
+            id: z.string().optional(),
+            order: z.number().min(0),
+          })
+          .omit({
+            intervalId: true,
+          })
+      ),
+    })
+    .omit({
+      workoutId: true,
+    })
+    .optional(),
+});
+
 export const createWorkoutSchema = insertWorkoutsSchema.extend({
   intervals: z.array(
     insertIntervalsSchema
@@ -144,4 +187,12 @@ export const createWorkoutSchema = insertWorkoutsSchema.extend({
         workoutId: true,
       })
   ),
+});
+
+export const getCompletedWorkoutsSchema = createSelectSchema(completedWorkouts);
+
+export const insertCompletedWorkoutsSchema = createInsertSchema(
+  completedWorkouts
+).omit({
+  id: true,
 });

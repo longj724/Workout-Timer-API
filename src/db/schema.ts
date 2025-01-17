@@ -1,26 +1,25 @@
 // External Dependencies
-import { integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { relations } from 'drizzle-orm';
 import { z } from 'zod';
 
-export const users = pgTable('users', {
+export const users = sqliteTable('users', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  createdAt: timestamp('created_at')
+  createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: timestamp('updated_at')
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date()),
+    .$defaultFn(() => new Date()),
 });
 
 export const createUserSchema = createInsertSchema(users);
 export const createSelectUserSchema = createSelectSchema(users);
 
-export const timers = pgTable('timers', {
+export const timers = sqliteTable('timers', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -30,16 +29,15 @@ export const timers = pgTable('timers', {
   order: integer('order').notNull(),
   minutes: integer('minutes').notNull().default(0),
   seconds: integer('seconds').notNull().default(0),
-  createdAt: timestamp('created_at')
+  createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: timestamp('updated_at')
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date()),
+    .$defaultFn(() => new Date()),
 });
 
-export const intervals = pgTable('intervals', {
+export const intervals = sqliteTable('intervals', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -49,37 +47,35 @@ export const intervals = pgTable('intervals', {
     .notNull()
     .references(() => workouts.id),
   order: integer('order').notNull(),
-  createdAt: timestamp('created_at')
+  createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: timestamp('updated_at')
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date()),
+    .$defaultFn(() => new Date()),
 });
 
-export const workouts = pgTable('workouts', {
+export const workouts = sqliteTable('workouts', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   userId: text('user_id').notNull(),
-  createdAt: timestamp('created_at')
+  createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: timestamp('updated_at')
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date()),
+    .$defaultFn(() => new Date()),
 });
 
-export const completedWorkouts = pgTable('completed_workouts', {
+export const completedWorkouts = sqliteTable('completed_workouts', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   workoutId: text('workout_id').references(() => workouts.id),
   userId: text('user_id').notNull(),
-  dateCompleted: timestamp('date_completed').notNull(),
+  dateCompleted: integer('date_completed', { mode: 'timestamp' }).notNull(),
   duration_hours: integer('duration_hours').notNull().default(0),
   duration_minutes: integer('duration_minutes').notNull().default(0),
   duration_seconds: integer('duration_seconds').notNull().default(0),
